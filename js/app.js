@@ -27,22 +27,23 @@ const EDITOR_EMAILS = {
 
 // Prioridad ordenada de menor a mayor peso.
 const PRIORITIES = [
-  'Extra Prescindible',
+  'Invitado Prescindible',
   'Prescindible',
-  'Extra Ideal',
+  'Invitado Ideal',
   'Ideal que esté',
-  'Extra Imprescindible',
+  'Invitado Imprescindible',
   'Imprescindible',
 ];
 
-const CATEGORIES = ['Familia Maya', 'Familia Bruno', 'Amigos', 'Congre'];
-const CATEGORY_FILTERS = ['Todos', 'Familia', 'Familia Maya', 'Familia Bruno', 'Amigos', 'Congre'];
+const CATEGORIES = ['Familia Maya', 'Familia Bruno', 'Amigos', 'Congre', 'Niños'];
+const CATEGORY_FILTERS = ['Todos', 'Familia', 'Familia Maya', 'Familia Bruno', 'Amigos', 'Congre', 'Niños'];
 const PRIORITY_FILTERS = ['Todos', ...PRIORITIES];
 
 const CATEGORY_CLASS = {
   'Familia Maya': 'cat-fam-maya',
   'Familia Bruno': 'cat-fam-bruno',
   'Amigos': 'cat-amigos',
+  'Niños': 'cat-ninos',
   'Congre': 'cat-congre',
 };
 
@@ -50,7 +51,7 @@ var state = {
   guests: [],
   log: [],
   guestsLoaded: false,
-  user: null,        // 'Bruno' | 'Maya' | 'Extra'
+  user: null,        // 'Bruno' | 'Maya' | 'Invitad@'
   role: null,         // 'editor' | 'viewer'
   pendingUser: null,  // 'Bruno' | 'Maya' mientras se pide la contraseña
   filters: { categoria: 'Todos', prioridad: 'Todos', texto: '' },
@@ -112,20 +113,15 @@ function render() {
 function renderStats() {
   var total = state.guests.length;
   var imprescindibles = state.guests.filter(function (g) {
-    return g.prioridad === 'Imprescindible' || g.prioridad === 'Extra Imprescindible';
+    return g.prioridad === 'Imprescindible' || g.prioridad === 'Invitado Imprescindible';
   }).length;
-  var familiaMaya = state.guests.filter(function (g) { return g.categoria === 'Familia Maya'; }).length;
-  var familiaBruno = state.guests.filter(function (g) { return g.categoria === 'Familia Bruno'; }).length;
-  var amigos = state.guests.filter(function (g) { return g.categoria === 'Amigos'; }).length;
-  var congre = state.guests.filter(function (g) { return g.categoria === 'Congre'; }).length;
 
-  els.stats.innerHTML =
-    pill(total, 'Total') +
-    pill(imprescindibles, 'Imprescindibles') +
-    pill(familiaMaya, 'Familia Maya') +
-    pill(familiaBruno, 'Familia Bruno') +
-    pill(amigos, 'Amigos') +
-    pill(congre, 'Congre');
+  var html = pill(total, 'Total') + pill(imprescindibles, 'Imprescindibles');
+  CATEGORIES.forEach(function (cat) {
+    var count = state.guests.filter(function (g) { return g.categoria === cat; }).length;
+    html += pill(count, cat);
+  });
+  els.stats.innerHTML = html;
 }
 
 function pill(value, label) {
@@ -263,7 +259,7 @@ function enterAsEditor(user) {
 }
 
 function enterAsViewer() {
-  state.user = 'Extra';
+  state.user = 'Invitad@';
   state.role = 'viewer';
   localStorage.setItem(VIEWER_FLAG_KEY, '1');
   showApp();
@@ -283,7 +279,7 @@ function showLogin() {
 }
 
 function handleUserPick(user) {
-  if (user === 'Extra') {
+  if (user === 'Invitad@') {
     enterAsViewer();
     return;
   }

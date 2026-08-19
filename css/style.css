@@ -479,6 +479,7 @@ input[type="text"]:focus, select:focus {
 .cat-fam-bruno { background: #ecd9c3; color: #8c5a2b; }
 .cat-amigos { background: #e1ebe9; color: var(--teal); }
 .cat-congre { background: #f3e6c6; color: var(--gold-dark); }
+.cat-ninos { background: #dbe9d8; color: #4f7a4a; }
 .cat-otro { background: var(--cream-dark); color: var(--ink-soft); }
 
 /* Escala de prioridad, de menor (pri-0) a mayor (pri-5) */

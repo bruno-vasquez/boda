@@ -5,12 +5,12 @@ Sistema simple para gestionar la lista de invitados entre Bruno y Maya, con sinc
 ## Cómo funciona
 
 - Frontend estático (HTML/CSS/JS, sin build) + **Firebase Firestore** como base de datos en tiempo real. Todo lo que añade, edita o borra un editor se ve al instante en el otro dispositivo.
-- Al entrar, se elige **Bruno**, **Maya** o **Extra**:
+- Al entrar, se elige **Bruno**, **Maya** o **Invitad@**:
   - **Bruno** y **Maya** piden contraseña. Si es correcta, quedan como editores: pueden añadir, editar y borrar invitados, y su nombre queda registrado en cada acción.
-  - **Extra** no pide nada y entra en modo solo lectura: ve la lista y los filtros, pero no hay formulario para añadir ni botones de editar/borrar.
+  - **Invitad@** no pide nada y entra en modo solo lectura: ve la lista y los filtros, pero no hay formulario para añadir ni botones de editar/borrar.
 - Cada invitado tiene:
-  - **Categoría**: Familia Maya, Familia Bruno, Amigos o Congre.
-  - **Prioridad** (de menor a mayor): Extra Prescindible, Prescindible, Extra Ideal, Ideal que esté, Extra Imprescindible, Imprescindible.
+  - **Categoría**: Familia Maya, Familia Bruno, Amigos, Congre o Niños.
+  - **Prioridad** (de menor a mayor): Invitado Prescindible, Prescindible, Invitado Ideal, Ideal que esté, Invitado Imprescindible, Imprescindible.
 - Filtros por categoría (incluye un filtro agrupado "Familia" que junta Familia Maya + Familia Bruno, además de los específicos), por prioridad y búsqueda por nombre.
 - **Historial de cambios**: panel con quién añadió, editó o eliminó a cada invitado y cuándo. Es de solo lectura (nadie puede alterarlo, ni siquiera borrando un invitado).
 - El puntito junto a "Hola, ..." en la esquina indica si hay conexión con la base de datos (verde = conectado).
@@ -18,8 +18,8 @@ Sistema simple para gestionar la lista de invitados entre Bruno y Maya, con sinc
 ## Seguridad
 
 - La contraseña de Bruno y Maya la valida **Firebase Authentication** (no un `if` en el código): existen dos cuentas fijas, `bruno@lista-invitados.local` y `maya@lista-invitados.local`, con la misma contraseña. El botón que tocas decide con cuál de las dos se intenta entrar.
-- Las reglas de Firestore ([firestore.rules](firestore.rules)) son las que de verdad bloquean escrituras: solo esas dos cuentas pueden crear/editar/borrar en `invitados` y crear entradas en `historial`. Cualquier otra persona (incluido "Extra") solo puede leer, aunque intente llamar a la base de datos directamente sin pasar por la página.
-- La lectura es pública (cualquiera con el link puede ver la lista, con o sin login) para mantener el login de "Extra" simple, sin contraseña.
+- Las reglas de Firestore ([firestore.rules](firestore.rules)) son las que de verdad bloquean escrituras: solo esas dos cuentas pueden crear/editar/borrar en `invitados` y crear entradas en `historial`. Cualquier otra persona (incluido "Invitad@") solo puede leer, aunque intente llamar a la base de datos directamente sin pasar por la página.
+- La lectura es pública (cualquiera con el link puede ver la lista, con o sin login) para mantener el login de "Invitad@" simple, sin contraseña.
 
 ## Proyecto Firebase
 
