@@ -16,17 +16,35 @@
 <div id="login-screen" class="login-screen">
   <div class="login-card">
     <p class="login-eyebrow">💌 Lista de Invitados</p>
-    <h1>¿Quién eres?</h1>
-    <p class="login-sub">Para saber quién añade, edita o borra a cada invitado.</p>
-    <div class="login-buttons">
-      <button class="user-btn" data-user="Bruno">
-        <span class="user-avatar">B</span>
-        <span>Bruno</span>
-      </button>
-      <button class="user-btn" data-user="Maya">
-        <span class="user-avatar">M</span>
-        <span>Maya</span>
-      </button>
+
+    <div id="login-step-who" class="login-step">
+      <h1>¿Quién eres?</h1>
+      <p class="login-sub">Bruno y Maya pueden añadir, editar y borrar. Extra es solo para ver.</p>
+      <div class="login-buttons">
+        <button class="user-btn" data-user="Bruno">
+          <span class="user-avatar">B</span>
+          <span>Bruno</span>
+        </button>
+        <button class="user-btn" data-user="Maya">
+          <span class="user-avatar">M</span>
+          <span>Maya</span>
+        </button>
+        <button class="user-btn user-btn-extra" data-user="Extra">
+          <span class="user-avatar">?</span>
+          <span>Extra</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="login-step-password" class="login-step hidden">
+      <h1>Hola, <span id="password-who-name">—</span></h1>
+      <p class="login-sub">Escribe la contraseña para poder editar.</p>
+      <form id="password-form" class="password-form">
+        <input type="password" id="password-input" placeholder="Contraseña" required autocomplete="current-password">
+        <button type="submit" class="btn-primary">Entrar</button>
+      </form>
+      <p id="password-error" class="password-error hidden"></p>
+      <button type="button" id="password-back-btn" class="link-btn">‹ Volver</button>
     </div>
   </div>
 </div>
@@ -39,6 +57,7 @@
       <h1>Nuestra Lista de Invitados</h1>
     </div>
     <div class="topbar-user">
+      <span class="sync-dot" id="sync-dot" title="Conectando..."></span>
       <span>Hola, <strong id="current-user-name">—</strong></span>
       <button id="switch-user-btn" class="link-btn">cambiar</button>
     </div>
@@ -50,22 +69,21 @@
     <section class="stats" id="stats"></section>
 
     <!-- Formulario para añadir -->
-    <section class="card">
+    <section class="card editor-only">
       <h2 class="card-title">Añadir invitado</h2>
       <form id="add-form" class="add-form">
         <input type="text" id="nombre-input" placeholder="Nombre del invitado" required autocomplete="off">
-        <select id="categoria-input" required>
-          <option value="" disabled selected>Categoría</option>
-          <option value="Familia">Familia</option>
-          <option value="Amigos">Amigos</option>
-          <option value="Congre">Congre</option>
-        </select>
-        <select id="prioridad-input" required>
-          <option value="" disabled selected>Prioridad</option>
-          <option value="Prescindible">Prescindible</option>
-          <option value="Ideal que esté">Ideal que esté</option>
-          <option value="Imprescindible">Imprescindible</option>
-        </select>
+
+        <div class="field-group">
+          <span class="field-label">Categoría</span>
+          <div class="chips select-chips" id="categoria-select"></div>
+        </div>
+
+        <div class="field-group">
+          <span class="field-label">Prioridad</span>
+          <div class="chips select-chips" id="prioridad-select"></div>
+        </div>
+
         <button type="submit" class="btn-primary">Añadir</button>
       </form>
     </section>
@@ -77,21 +95,11 @@
       </div>
       <div class="filters-row chips-row">
         <span class="chips-label">Categoría:</span>
-        <div class="chips" id="categoria-filters">
-          <button class="chip active" data-value="Todos">Todos</button>
-          <button class="chip" data-value="Familia">Familia</button>
-          <button class="chip" data-value="Amigos">Amigos</button>
-          <button class="chip" data-value="Congre">Congre</button>
-        </div>
+        <div class="chips" id="categoria-filters"></div>
       </div>
       <div class="filters-row chips-row">
         <span class="chips-label">Prioridad:</span>
-        <div class="chips" id="prioridad-filters">
-          <button class="chip active" data-value="Todos">Todos</button>
-          <button class="chip" data-value="Prescindible">Prescindible</button>
-          <button class="chip" data-value="Ideal que esté">Ideal que esté</button>
-          <button class="chip" data-value="Imprescindible">Imprescindible</button>
-        </div>
+        <div class="chips" id="prioridad-filters"></div>
       </div>
     </section>
 
@@ -115,10 +123,10 @@
     <!-- Exportar / Importar -->
     <section class="card backup-card">
       <h2 class="card-title">Respaldo</h2>
-      <p class="backup-hint">Como no hay servidor, cada dispositivo guarda su propia copia. Exporta y comparte el archivo para mantener sincronizadas las listas de Bruno y Maya.</p>
+      <p class="backup-hint">Los datos se guardan en la nube y se sincronizan solos entre dispositivos. Usa esto solo como respaldo manual por si algo sale mal.</p>
       <div class="backup-actions">
         <button id="export-btn" class="btn-secondary">Exportar datos</button>
-        <label class="btn-secondary file-label">
+        <label class="btn-secondary file-label editor-only">
           Importar datos
           <input type="file" id="import-input" accept="application/json" hidden>
         </label>
@@ -134,16 +142,17 @@
     <h2>Editar invitado</h2>
     <form id="edit-form">
       <input type="text" id="edit-nombre-input" required autocomplete="off">
-      <select id="edit-categoria-input" required>
-        <option value="Familia">Familia</option>
-        <option value="Amigos">Amigos</option>
-        <option value="Congre">Congre</option>
-      </select>
-      <select id="edit-prioridad-input" required>
-        <option value="Prescindible">Prescindible</option>
-        <option value="Ideal que esté">Ideal que esté</option>
-        <option value="Imprescindible">Imprescindible</option>
-      </select>
+
+      <div class="field-group">
+        <span class="field-label">Categoría</span>
+        <div class="chips select-chips" id="edit-categoria-select"></div>
+      </div>
+
+      <div class="field-group">
+        <span class="field-label">Prioridad</span>
+        <div class="chips select-chips" id="edit-prioridad-select"></div>
+      </div>
+
       <div class="modal-actions">
         <button type="button" id="edit-cancel-btn" class="btn-secondary">Cancelar</button>
         <button type="submit" class="btn-primary">Guardar cambios</button>
@@ -152,6 +161,6 @@
   </div>
 </div>
 
-<script src="js/app.js"></script>
+<script type="module" src="js/app.js"></script>
 </body>
 </html>

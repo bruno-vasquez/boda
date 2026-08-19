@@ -1,0 +1,4 @@
+node_modules/
+pglite-debug.log
+firebase-debug.log
+.firebase/

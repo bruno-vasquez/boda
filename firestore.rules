@@ -1,0 +1,22 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isEditor() {
+      return request.auth != null &&
+        request.auth.token.email in ['bruno@lista-invitados.local', 'maya@lista-invitados.local'];
+    }
+
+    match /invitados/{guestId} {
+      allow read: if true;
+      allow write: if isEditor();
+    }
+
+    match /historial/{entryId} {
+      allow read: if true;
+      allow create: if isEditor();
+      allow update, delete: if false;
+    }
+  }
+}

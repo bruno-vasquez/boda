@@ -1,44 +1,61 @@
 # Lista de Invitados
 
-Sistema simple para gestionar la lista de invitados entre Bruno y Maya.
+Sistema simple para gestionar la lista de invitados entre Bruno y Maya, con sincronización en vivo entre dispositivos.
 
 ## Cómo funciona
 
-- No usa servidor ni base de datos: es una página estática (HTML/CSS/JS) que guarda todo en el `localStorage` del navegador donde se abre.
-- Al entrar, cada quien elige si es **Bruno** o **Maya**. Ese nombre queda registrado en cada invitado que se añade, edita o borra.
+- Frontend estático (HTML/CSS/JS, sin build) + **Firebase Firestore** como base de datos en tiempo real. Todo lo que añade, edita o borra un editor se ve al instante en el otro dispositivo.
+- Al entrar, se elige **Bruno**, **Maya** o **Extra**:
+  - **Bruno** y **Maya** piden contraseña. Si es correcta, quedan como editores: pueden añadir, editar y borrar invitados, y su nombre queda registrado en cada acción.
+  - **Extra** no pide nada y entra en modo solo lectura: ve la lista y los filtros, pero no hay formulario para añadir ni botones de editar/borrar.
 - Cada invitado tiene:
-  - **Categoría**: Familia, Amigos o Congre.
-  - **Prioridad**: Prescindible, Ideal que esté, Imprescindible.
-- Hay filtros por categoría, prioridad y búsqueda por nombre.
-- Hay un **Historial de cambios** con quién añadió, editó o eliminó a cada invitado y cuándo.
+  - **Categoría**: Familia Maya, Familia Bruno, Amigos o Congre.
+  - **Prioridad** (de menor a mayor): Extra Prescindible, Prescindible, Extra Ideal, Ideal que esté, Extra Imprescindible, Imprescindible.
+- Filtros por categoría (incluye un filtro agrupado "Familia" que junta Familia Maya + Familia Bruno, además de los específicos), por prioridad y búsqueda por nombre.
+- **Historial de cambios**: panel con quién añadió, editó o eliminó a cada invitado y cuándo. Es de solo lectura (nadie puede alterarlo, ni siquiera borrando un invitado).
+- El puntito junto a "Hola, ..." en la esquina indica si hay conexión con la base de datos (verde = conectado).
 
-## Importante: sincronización entre dispositivos
+## Seguridad
 
-Como no hay base de datos, los datos viven **solo en el navegador donde se usan**. Si Bruno y Maya abren la app desde dispositivos distintos, cada uno tendrá su propia copia — no se sincronizan solas.
+- La contraseña de Bruno y Maya la valida **Firebase Authentication** (no un `if` en el código): existen dos cuentas fijas, `bruno@lista-invitados.local` y `maya@lista-invitados.local`, con la misma contraseña. El botón que tocas decide con cuál de las dos se intenta entrar.
+- Las reglas de Firestore ([firestore.rules](firestore.rules)) son las que de verdad bloquean escrituras: solo esas dos cuentas pueden crear/editar/borrar en `invitados` y crear entradas en `historial`. Cualquier otra persona (incluido "Extra") solo puede leer, aunque intente llamar a la base de datos directamente sin pasar por la página.
+- La lectura es pública (cualquiera con el link puede ver la lista, con o sin login) para mantener el login de "Extra" simple, sin contraseña.
 
-Para mantenerlas iguales, usa los botones de **Respaldo** al fondo de la página:
-- **Exportar datos**: descarga un archivo `.json` con la lista y el historial.
-- **Importar datos**: carga un archivo `.json` exportado, reemplazando los datos del dispositivo actual.
+## Proyecto Firebase
 
-La idea es exportar de vez en cuando y compartirse el archivo (por WhatsApp, por ejemplo) para que ambos tengan lo último.
+- Proyecto: `lista-invitados-bm` — dedicado solo a esto, separado del proyecto de Alabanza.
+- Base de datos: Firestore Native, colecciones `invitados` e `historial`.
+- Auth: Email/Password, con las dos cuentas fijas de Bruno y Maya.
+- Consola: https://console.firebase.google.com/project/lista-invitados-bm/overview
+
+### Configuración pendiente en Firebase Console
+
+1. **Authentication → Sign-in method → Email/Password → Habilitar.**
+2. Crear las 2 cuentas (Authentication → Users → Add user), o pedirle a Claude que las cree por CLI una vez habilitado el paso 1:
+   - `bruno@lista-invitados.local`
+   - `maya@lista-invitados.local`
+
+Si alguna vez cambias las reglas de seguridad (`firestore.rules`), despliégalas con:
+```
+firebase deploy --only firestore:rules --project lista-invitados-bm
+```
+
+## Respaldo manual
+
+Los botones **Exportar / Importar datos** al fondo de la página son solo un respaldo de emergencia (por ejemplo, antes de borrar algo importante). Ya no hacen falta para sincronizar entre dispositivos — eso ahora es automático.
 
 ## Uso local
 
-Solo abre `index.html` en el navegador (doble clic, o arrástralo a una pestaña).
+Como usa módulos de JavaScript (`type="module"`), no puedes abrir `index.html` con doble clic (el navegador bloquea los `import` sobre `file://`). Necesitas un servidor estático simple:
+```
+python -m http.server 8080
+```
+y abrir `http://localhost:8080`.
 
 ## Deploy con GitHub Pages
 
-1. Crea un repositorio en GitHub (puede ser público o privado).
-2. Sube este proyecto:
-   ```
-   git init
-   git add .
-   git commit -m "Lista de invitados inicial"
-   git branch -M main
-   git remote add origin <URL-del-repo>
-   git push -u origin main
-   ```
-3. En GitHub: **Settings → Pages → Source → Deploy from branch → main → / (root)**.
-4. La app quedará disponible en `https://<usuario>.github.io/<repo>/`.
+1. Sube el proyecto a un repositorio en GitHub (incluye `js/firebase-config.js` — esas claves son públicas por diseño, la seguridad real la dan las reglas de Firestore, no ocultarlas).
+2. En GitHub: **Settings → Pages → Source → Deploy from branch → main → / (root)**.
+3. La app queda disponible en `https://<usuario>.github.io/<repo>/`.
 
-Cada vez que quieras actualizar el sitio, solo haz `git add .`, `git commit` y `git push` de nuevo.
+Cada vez que quieras actualizar el sitio: `git add .`, `git commit`, `git push`.
