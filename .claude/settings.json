@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"c:\\\\Users\\\\Bruno\\\\Desktop\\\\ListaInvitados\" && mkdir -p css js)",
+      "Bash(chromium-cli --help)",
+      "Bash(npx --yes playwright --version)",
+      "Bash(node -e \"require\\('playwright'\\)\")",
+      "Bash(npx --yes playwright install chromium --with-deps)",
+      "Bash(npx --yes -p playwright node verify.js)",
+      "Bash(npm init *)",
+      "Bash(node verify.js)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Bruno\\Desktop\\ListaInvitados"
+    ]
+  }
+}

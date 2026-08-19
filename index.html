@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lista de Invitados</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💌</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- Pantalla de login: elegir usuario -->
+<div id="login-screen" class="login-screen">
+  <div class="login-card">
+    <p class="login-eyebrow">💌 Lista de Invitados</p>
+    <h1>¿Quién eres?</h1>
+    <p class="login-sub">Para saber quién añade, edita o borra a cada invitado.</p>
+    <div class="login-buttons">
+      <button class="user-btn" data-user="Bruno">
+        <span class="user-avatar">B</span>
+        <span>Bruno</span>
+      </button>
+      <button class="user-btn" data-user="Maya">
+        <span class="user-avatar">M</span>
+        <span>Maya</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- App principal -->
+<div id="app" class="app hidden">
+  <header class="topbar">
+    <div class="topbar-title">
+      <span class="topbar-emoji">💌</span>
+      <h1>Nuestra Lista de Invitados</h1>
+    </div>
+    <div class="topbar-user">
+      <span>Hola, <strong id="current-user-name">—</strong></span>
+      <button id="switch-user-btn" class="link-btn">cambiar</button>
+    </div>
+  </header>
+
+  <main class="content">
+
+    <!-- Estadísticas -->
+    <section class="stats" id="stats"></section>
+
+    <!-- Formulario para añadir -->
+    <section class="card">
+      <h2 class="card-title">Añadir invitado</h2>
+      <form id="add-form" class="add-form">
+        <input type="text" id="nombre-input" placeholder="Nombre del invitado" required autocomplete="off">
+        <select id="categoria-input" required>
+          <option value="" disabled selected>Categoría</option>
+          <option value="Familia">Familia</option>
+          <option value="Amigos">Amigos</option>
+          <option value="Congre">Congre</option>
+        </select>
+        <select id="prioridad-input" required>
+          <option value="" disabled selected>Prioridad</option>
+          <option value="Prescindible">Prescindible</option>
+          <option value="Ideal que esté">Ideal que esté</option>
+          <option value="Imprescindible">Imprescindible</option>
+        </select>
+        <button type="submit" class="btn-primary">Añadir</button>
+      </form>
+    </section>
+
+    <!-- Filtros -->
+    <section class="card filters-card">
+      <div class="filters-row">
+        <input type="text" id="search-input" placeholder="Buscar por nombre..." autocomplete="off">
+      </div>
+      <div class="filters-row chips-row">
+        <span class="chips-label">Categoría:</span>
+        <div class="chips" id="categoria-filters">
+          <button class="chip active" data-value="Todos">Todos</button>
+          <button class="chip" data-value="Familia">Familia</button>
+          <button class="chip" data-value="Amigos">Amigos</button>
+          <button class="chip" data-value="Congre">Congre</button>
+        </div>
+      </div>
+      <div class="filters-row chips-row">
+        <span class="chips-label">Prioridad:</span>
+        <div class="chips" id="prioridad-filters">
+          <button class="chip active" data-value="Todos">Todos</button>
+          <button class="chip" data-value="Prescindible">Prescindible</button>
+          <button class="chip" data-value="Ideal que esté">Ideal que esté</button>
+          <button class="chip" data-value="Imprescindible">Imprescindible</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Lista de invitados -->
+    <section class="card">
+      <div class="list-header">
+        <h2 class="card-title">Invitados <span id="list-count" class="count-badge">0</span></h2>
+      </div>
+      <ul id="guest-list" class="guest-list"></ul>
+      <p id="empty-state" class="empty-state hidden">No hay invitados que coincidan con el filtro.</p>
+    </section>
+
+    <!-- Historial -->
+    <section class="card">
+      <button id="toggle-historial" class="card-title toggle-btn">
+        Historial de cambios <span id="historial-arrow">▾</span>
+      </button>
+      <ul id="historial-list" class="historial-list hidden"></ul>
+    </section>
+
+    <!-- Exportar / Importar -->
+    <section class="card backup-card">
+      <h2 class="card-title">Respaldo</h2>
+      <p class="backup-hint">Como no hay servidor, cada dispositivo guarda su propia copia. Exporta y comparte el archivo para mantener sincronizadas las listas de Bruno y Maya.</p>
+      <div class="backup-actions">
+        <button id="export-btn" class="btn-secondary">Exportar datos</button>
+        <label class="btn-secondary file-label">
+          Importar datos
+          <input type="file" id="import-input" accept="application/json" hidden>
+        </label>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Modal de edición -->
+<div id="edit-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>Editar invitado</h2>
+    <form id="edit-form">
+      <input type="text" id="edit-nombre-input" required autocomplete="off">
+      <select id="edit-categoria-input" required>
+        <option value="Familia">Familia</option>
+        <option value="Amigos">Amigos</option>
+        <option value="Congre">Congre</option>
+      </select>
+      <select id="edit-prioridad-input" required>
+        <option value="Prescindible">Prescindible</option>
+        <option value="Ideal que esté">Ideal que esté</option>
+        <option value="Imprescindible">Imprescindible</option>
+      </select>
+      <div class="modal-actions">
+        <button type="button" id="edit-cancel-btn" class="btn-secondary">Cancelar</button>
+        <button type="submit" class="btn-primary">Guardar cambios</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
