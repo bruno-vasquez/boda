@@ -471,6 +471,8 @@ function init() {
     searchInput: document.getElementById('search-input'),
     categoriaFilters: document.getElementById('categoria-filters'),
     prioridadFilters: document.getElementById('prioridad-filters'),
+    clearCategoriaFilter: document.getElementById('clear-categoria-filter'),
+    clearPrioridadFilter: document.getElementById('clear-prioridad-filter'),
     guestList: document.getElementById('guest-list'),
     emptyState: document.getElementById('empty-state'),
     listCount: document.getElementById('list-count'),
@@ -543,11 +545,36 @@ function init() {
     state.filters.categoria = toggleFilterSelection(els.categoriaFilters, btn.dataset.value);
     render();
   });
+  els.categoriaFilters.addEventListener('dblclick', function (e) {
+    var btn = e.target.closest('.chip');
+    if (!btn || btn.dataset.value === 'Todos') return;
+    state.filters.categoria = ['Todos'];
+    setChipSelections(els.categoriaFilters, state.filters.categoria);
+    render();
+  });
 
   els.prioridadFilters.addEventListener('click', function (e) {
     var btn = e.target.closest('.chip');
     if (!btn) return;
     state.filters.prioridad = toggleFilterSelection(els.prioridadFilters, btn.dataset.value);
+    render();
+  });
+  els.prioridadFilters.addEventListener('dblclick', function (e) {
+    var btn = e.target.closest('.chip');
+    if (!btn || btn.dataset.value === 'Todos') return;
+    state.filters.prioridad = ['Todos'];
+    setChipSelections(els.prioridadFilters, state.filters.prioridad);
+    render();
+  });
+
+  els.clearCategoriaFilter.addEventListener('click', function () {
+    state.filters.categoria = ['Todos'];
+    setChipSelections(els.categoriaFilters, state.filters.categoria);
+    render();
+  });
+  els.clearPrioridadFilter.addEventListener('click', function () {
+    state.filters.prioridad = ['Todos'];
+    setChipSelections(els.prioridadFilters, state.filters.prioridad);
     render();
   });
 

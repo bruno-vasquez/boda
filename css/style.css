@@ -381,6 +381,20 @@ input[type="text"]:focus, select:focus {
   margin-right: 2px;
 }
 
+.clear-filter-btn {
+  border: none;
+  background: none;
+  color: var(--rose-dark);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px 2px;
+}
+
+.clear-filter-btn:hover { color: var(--ink); }
+
 .chips {
   display: flex;
   gap: 6px;
