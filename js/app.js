@@ -54,7 +54,7 @@ var state = {
   user: null,        // 'Bruno' | 'Maya' | 'Invitad@'
   role: null,         // 'editor' | 'viewer'
   pendingUser: null,  // 'Bruno' | 'Maya' mientras se pide la contraseña
-  filters: { categoria: 'Todos', prioridad: 'Todos', texto: '' },
+  filters: { categoria: ['Todos'], prioridad: ['Todos'], texto: '' },
   editingId: null,
 };
 
@@ -103,6 +103,30 @@ function getChipSelection(container) {
   return container.dataset.selected || '';
 }
 
+function setChipSelections(container, values) {
+  var selected = values || [];
+  container.querySelectorAll('.chip').forEach(function (c) {
+    c.classList.toggle('active', selected.indexOf(c.dataset.value) !== -1);
+  });
+}
+
+function toggleFilterSelection(container, value) {
+  var selected = Array.from(container.querySelectorAll('.chip.active')).map(function (chip) {
+    return chip.dataset.value;
+  });
+
+  if (value === 'Todos') {
+    setChipSelections(container, ['Todos']);
+    return ['Todos'];
+  }
+
+  selected = selected.filter(function (item) { return item !== 'Todos' && item !== value; });
+  if (selected.indexOf(value) === -1) selected.push(value);
+  if (selected.length === 0) selected = ['Todos'];
+  setChipSelections(container, selected);
+  return selected;
+}
+
 // ---------- Rendering ----------
 function render() {
   renderStats();
@@ -111,14 +135,15 @@ function render() {
 }
 
 function renderStats() {
-  var total = state.guests.length;
-  var imprescindibles = state.guests.filter(function (g) {
+  var visibleGuests = getFilteredGuests();
+  var total = visibleGuests.length;
+  var imprescindibles = visibleGuests.filter(function (g) {
     return g.prioridad === 'Imprescindible' || g.prioridad === 'Invitado Imprescindible';
   }).length;
 
   var html = pill(total, 'Total') + pill(imprescindibles, 'Imprescindibles');
   CATEGORIES.forEach(function (cat) {
-    var count = state.guests.filter(function (g) { return g.categoria === cat; }).length;
+    var count = visibleGuests.filter(function (g) { return g.categoria === cat; }).length;
     html += pill(count, cat);
   });
   els.stats.innerHTML = html;
@@ -137,8 +162,12 @@ function matchesCategoriaFilter(categoria, filtro) {
 
 function getFilteredGuests() {
   return state.guests.filter(function (g) {
-    if (!matchesCategoriaFilter(g.categoria, state.filters.categoria)) return false;
-    if (state.filters.prioridad !== 'Todos' && g.prioridad !== state.filters.prioridad) return false;
+    var categorias = state.filters.categoria;
+    var prioridades = state.filters.prioridad;
+    if (categorias.indexOf('Todos') === -1 && !categorias.some(function (filtro) {
+      return matchesCategoriaFilter(g.categoria, filtro);
+    })) return false;
+    if (prioridades.indexOf('Todos') === -1 && prioridades.indexOf(g.prioridad) === -1) return false;
     if (state.filters.texto && g.nombre.toLowerCase().indexOf(state.filters.texto.toLowerCase()) === -1) return false;
     return true;
   }).sort(function (a, b) { return a.nombre.localeCompare(b.nombre, 'es'); });
@@ -464,8 +493,8 @@ function init() {
   renderChips(els.editPrioridadSelect, PRIORITIES, { classFn: priorityClass });
   renderChips(els.categoriaFilters, CATEGORY_FILTERS);
   renderChips(els.prioridadFilters, PRIORITY_FILTERS);
-  setChipSelection(els.categoriaFilters, 'Todos');
-  setChipSelection(els.prioridadFilters, 'Todos');
+  setChipSelections(els.categoriaFilters, ['Todos']);
+  setChipSelections(els.prioridadFilters, ['Todos']);
 
   document.querySelectorAll('.user-btn').forEach(function (btn) {
     btn.addEventListener('click', function () { handleUserPick(btn.dataset.user); });
@@ -505,23 +534,21 @@ function init() {
 
   els.searchInput.addEventListener('input', function (e) {
     state.filters.texto = e.target.value;
-    renderGuestList();
+    render();
   });
 
   els.categoriaFilters.addEventListener('click', function (e) {
     var btn = e.target.closest('.chip');
     if (!btn) return;
-    state.filters.categoria = btn.dataset.value;
-    setChipSelection(els.categoriaFilters, btn.dataset.value);
-    renderGuestList();
+    state.filters.categoria = toggleFilterSelection(els.categoriaFilters, btn.dataset.value);
+    render();
   });
 
   els.prioridadFilters.addEventListener('click', function (e) {
     var btn = e.target.closest('.chip');
     if (!btn) return;
-    state.filters.prioridad = btn.dataset.value;
-    setChipSelection(els.prioridadFilters, btn.dataset.value);
-    renderGuestList();
+    state.filters.prioridad = toggleFilterSelection(els.prioridadFilters, btn.dataset.value);
+    render();
   });
 
   els.guestList.addEventListener('click', function (e) {
