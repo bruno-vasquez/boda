@@ -35,8 +35,10 @@ const PRIORITIES = [
   'Imprescindible',
 ];
 
-const CATEGORIES = ['Familia Maya', 'Familia Bruno', 'Amigos', 'Congre', 'Niños', 'Boda Religiosa', 'Boda Civil'];
-const CATEGORY_FILTERS = ['Todos', 'Familia', 'Familia Maya', 'Familia Bruno', 'Amigos', 'Congre', 'Niños', 'Boda Religiosa', 'Boda Civil'];
+const CATEGORIES = ['Familia Maya', 'Familia Bruno', 'Amigos', 'Congre', 'Niños'];
+const BODA_OPTIONS = ['Civil', 'Religiosa'];
+const CATEGORY_FILTERS = ['Todos', 'Familia', ...CATEGORIES];
+const BODA_FILTERS = ['Todos', ...BODA_OPTIONS];
 const PRIORITY_FILTERS = ['Todos', ...PRIORITIES];
 
 const CATEGORY_CLASS = {
@@ -45,8 +47,8 @@ const CATEGORY_CLASS = {
   'Amigos': 'cat-amigos',
   'Niños': 'cat-ninos',
   'Congre': 'cat-congre',
-  'Boda Religiosa': 'cat-boda-religiosa',
-  'Boda Civil': 'cat-boda-civil',
+  'Civil': 'cat-boda-civil',
+  'Religiosa': 'cat-boda-religiosa',
 };
 
 var state = {
@@ -56,7 +58,7 @@ var state = {
   user: null,        // 'Bruno' | 'Maya' | 'Invitad@'
   role: null,         // 'editor' | 'viewer'
   pendingUser: null,  // 'Bruno' | 'Maya' mientras se pide la contraseña
-  filters: { categoria: ['Todos'], prioridad: ['Todos'], texto: '' },
+  filters: { categoria: ['Todos'], boda: ['Todos'], prioridad: ['Todos'], texto: '' },
   editingId: null,
 };
 
@@ -91,6 +93,23 @@ function normalizeCategories(value) {
     .filter(function (category) { return category !== null && category !== undefined && category !== ''; })
     .map(function (category) { return String(category).trim(); })
     .filter(function (category, idx, arr) { return category && arr.indexOf(category) === idx; });
+}
+
+function normalizeGeneralCategories(value) {
+  return normalizeCategories(value).filter(function (category) {
+    return CATEGORIES.indexOf(category) !== -1;
+  });
+}
+
+function normalizeBoda(value, legacyCategories) {
+  var boda = normalizeCategories(value);
+  normalizeCategories(legacyCategories).forEach(function (category) {
+    if (category === 'Boda Civil') boda.push('Civil');
+    if (category === 'Boda Religiosa') boda.push('Religiosa');
+  });
+  return boda.filter(function (option, idx, arr) {
+    return BODA_OPTIONS.indexOf(option) !== -1 && arr.indexOf(option) === idx;
+  });
 }
 
 function getChipSelections(container) {
@@ -160,9 +179,15 @@ function renderStats() {
   var html = pill(total, 'Total') + pill(imprescindibles, 'Imprescindibles');
   CATEGORIES.forEach(function (cat) {
     var count = visibleGuests.filter(function (g) {
-      return normalizeCategories(g.categoria).indexOf(cat) !== -1;
+      return normalizeGeneralCategories(g.categoria).indexOf(cat) !== -1;
     }).length;
     html += pill(count, cat);
+  });
+  BODA_OPTIONS.forEach(function (option) {
+    var count = visibleGuests.filter(function (g) {
+      return normalizeBoda(g.boda, g.categoria).indexOf(option) !== -1;
+    }).length;
+    html += pill(count, 'Boda ' + option);
   });
   els.stats.innerHTML = html;
 }
@@ -173,18 +198,27 @@ function pill(value, label) {
 }
 
 function matchesCategoriaFilter(categoria, filtro) {
-  var categorias = normalizeCategories(categoria);
+  var categorias = normalizeGeneralCategories(categoria);
   if (filtro === 'Todos') return true;
   if (filtro === 'Familia') return categorias.some(function (cat) { return cat.indexOf('Familia') === 0; });
   return categorias.indexOf(filtro) !== -1;
 }
 
+function matchesBodaFilter(boda, categoria, filtro) {
+  if (filtro === 'Todos') return true;
+  return normalizeBoda(boda, categoria).indexOf(filtro) !== -1;
+}
+
 function getFilteredGuests() {
   return state.guests.filter(function (g) {
     var categorias = state.filters.categoria;
+    var bodas = state.filters.boda;
     var prioridades = state.filters.prioridad;
     if (categorias.indexOf('Todos') === -1 && !categorias.some(function (filtro) {
       return matchesCategoriaFilter(g.categoria, filtro);
+    })) return false;
+    if (bodas.indexOf('Todos') === -1 && !bodas.some(function (filtro) {
+      return matchesBodaFilter(g.boda, g.categoria, filtro);
     })) return false;
     if (prioridades.indexOf('Todos') === -1 && prioridades.indexOf(g.prioridad) === -1) return false;
     if (state.filters.texto && g.nombre.toLowerCase().indexOf(state.filters.texto.toLowerCase()) === -1) return false;
@@ -209,16 +243,21 @@ function renderGuestList() {
   els.guestList.innerHTML = filtered.map(function (g) {
     var meta = 'Añadido por ' + g.addedBy + ' · ' + formatDate(g.addedAt);
     if (g.editedBy) meta += ' &nbsp;·&nbsp; Editado por ' + g.editedBy + ' · ' + formatDate(g.editedAt);
-    var categorias = normalizeCategories(g.categoria);
+    var categorias = normalizeGeneralCategories(g.categoria);
+    var bodas = normalizeBoda(g.boda, g.categoria);
     var categoriasHtml = categorias.length ? categorias.map(function (cat) {
       return '<span class="tag ' + categoryClass(cat) + '">' + cat + '</span>';
     }).join('') : '<span class="tag cat-otro">Sin categoría</span>';
+    var bodasHtml = bodas.map(function (option) {
+      return '<span class="tag ' + categoryClass(option) + '">Boda ' + option + '</span>';
+    }).join('');
 
     return '<li class="guest-item" data-id="' + g.id + '">' +
       '<div class="guest-main">' +
         '<span class="guest-name">' + escapeHtml(g.nombre) + '</span>' +
         '<div class="guest-tags">' +
           categoriasHtml +
+          bodasHtml +
           '<span class="tag ' + priorityClass(g.prioridad) + '">' + g.prioridad + '</span>' +
         '</div>' +
         '<span class="guest-meta">' + meta + '</span>' +
@@ -251,11 +290,13 @@ function logAction(payload) {
   return addDoc(HISTORIAL_COL, payload);
 }
 
-function addGuest(nombre, categorias, prioridad) {
-  var categoriasValidas = normalizeCategories(categorias).filter(function (cat) { return CATEGORIES.indexOf(cat) !== -1; });
+function addGuest(nombre, categorias, boda, prioridad) {
+  var categoriasValidas = normalizeGeneralCategories(categorias);
+  var bodaValida = normalizeBoda(boda);
   return addDoc(GUESTS_COL, {
     nombre: nombre.trim(),
     categoria: categoriasValidas.length ? categoriasValidas : [CATEGORIES[0]],
+    boda: bodaValida,
     prioridad: prioridad,
     addedBy: state.user,
     addedAt: serverTimestamp(),
@@ -266,19 +307,22 @@ function addGuest(nombre, categorias, prioridad) {
   });
 }
 
-function updateGuest(id, nombre, categorias, prioridad) {
+function updateGuest(id, nombre, categorias, boda, prioridad) {
   var guest = state.guests.find(function (g) { return g.id === id; });
   if (!guest) return;
 
-  var categoriasValidas = normalizeCategories(categorias).filter(function (cat) { return CATEGORIES.indexOf(cat) !== -1; });
+  var categoriasValidas = normalizeGeneralCategories(categorias);
+  var bodaValida = normalizeBoda(boda);
   var cambios = [];
   if (guest.nombre !== nombre) cambios.push('nombre');
-  if (JSON.stringify(normalizeCategories(guest.categoria)) !== JSON.stringify(categoriasValidas)) cambios.push('categoría');
+  if (JSON.stringify(normalizeGeneralCategories(guest.categoria)) !== JSON.stringify(categoriasValidas)) cambios.push('categoría');
+  if (JSON.stringify(normalizeBoda(guest.boda, guest.categoria)) !== JSON.stringify(bodaValida)) cambios.push('boda');
   if (guest.prioridad !== prioridad) cambios.push('prioridad');
 
   return updateDoc(doc(db, 'invitados', id), {
     nombre: nombre.trim(),
     categoria: categoriasValidas.length ? categoriasValidas : [CATEGORIES[0]],
+    boda: bodaValida,
     prioridad: prioridad,
     editedBy: state.user,
     editedAt: serverTimestamp(),
@@ -377,7 +421,8 @@ function openEditModal(id) {
   if (!guest) return;
   state.editingId = id;
   els.editNombreInput.value = guest.nombre;
-  setChipSelections(els.editCategoriaSelect, normalizeCategories(guest.categoria));
+  setChipSelections(els.editCategoriaSelect, normalizeGeneralCategories(guest.categoria));
+  setChipSelections(els.editBodaSelect, normalizeBoda(guest.boda, guest.categoria));
   setChipSelection(els.editPrioridadSelect, guest.prioridad);
   els.editModal.classList.remove('hidden');
 }
@@ -391,7 +436,8 @@ function closeEditModal() {
 function serializeGuest(g) {
   return {
     nombre: g.nombre,
-    categoria: normalizeCategories(g.categoria),
+    categoria: normalizeGeneralCategories(g.categoria),
+    boda: normalizeBoda(g.boda, g.categoria),
     prioridad: g.prioridad,
     addedBy: g.addedBy,
     addedAt: g.addedAt && g.addedAt.toDate ? g.addedAt.toDate().toISOString() : null,
@@ -430,13 +476,13 @@ function importData(file) {
       var batch = writeBatch(db);
       data.guests.forEach(function (g) {
         if (!g || !g.nombre) return;
-        var categoriasImportadas = normalizeCategories(g.categoria).filter(function (cat) {
-          return CATEGORIES.indexOf(cat) !== -1;
-        });
+        var categoriasImportadas = normalizeGeneralCategories(g.categoria);
+        var bodaImportada = normalizeBoda(g.boda, g.categoria);
         var ref = doc(GUESTS_COL);
         batch.set(ref, {
           nombre: String(g.nombre).trim(),
           categoria: categoriasImportadas.length ? categoriasImportadas : [CATEGORIES[0]],
+          boda: bodaImportada,
           prioridad: PRIORITIES.indexOf(g.prioridad) !== -1 ? g.prioridad : PRIORITIES[1],
           addedBy: g.addedBy || state.user,
           addedAt: parseDateSafe(g.addedAt) || serverTimestamp(),
@@ -495,11 +541,14 @@ function init() {
     addForm: document.getElementById('add-form'),
     nombreInput: document.getElementById('nombre-input'),
     categoriaSelect: document.getElementById('categoria-select'),
+    bodaSelect: document.getElementById('boda-select'),
     prioridadSelect: document.getElementById('prioridad-select'),
     searchInput: document.getElementById('search-input'),
     categoriaFilters: document.getElementById('categoria-filters'),
     prioridadFilters: document.getElementById('prioridad-filters'),
     clearCategoriaFilter: document.getElementById('clear-categoria-filter'),
+    bodaFilters: document.getElementById('boda-filters'),
+    clearBodaFilter: document.getElementById('clear-boda-filter'),
     clearPrioridadFilter: document.getElementById('clear-prioridad-filter'),
     guestList: document.getElementById('guest-list'),
     emptyState: document.getElementById('empty-state'),
@@ -513,17 +562,22 @@ function init() {
     editForm: document.getElementById('edit-form'),
     editNombreInput: document.getElementById('edit-nombre-input'),
     editCategoriaSelect: document.getElementById('edit-categoria-select'),
+    editBodaSelect: document.getElementById('edit-boda-select'),
     editPrioridadSelect: document.getElementById('edit-prioridad-select'),
     editCancelBtn: document.getElementById('edit-cancel-btn'),
   };
 
   renderChips(els.categoriaSelect, CATEGORIES, { classFn: categoryClass });
+  renderChips(els.bodaSelect, BODA_OPTIONS, { classFn: categoryClass });
   renderChips(els.prioridadSelect, PRIORITIES, { classFn: priorityClass });
   renderChips(els.editCategoriaSelect, CATEGORIES, { classFn: categoryClass });
+  renderChips(els.editBodaSelect, BODA_OPTIONS, { classFn: categoryClass });
   renderChips(els.editPrioridadSelect, PRIORITIES, { classFn: priorityClass });
   renderChips(els.categoriaFilters, CATEGORY_FILTERS);
+  renderChips(els.bodaFilters, BODA_FILTERS);
   renderChips(els.prioridadFilters, PRIORITY_FILTERS);
   setChipSelections(els.categoriaFilters, ['Todos']);
+  setChipSelections(els.bodaFilters, ['Todos']);
   setChipSelections(els.prioridadFilters, ['Todos']);
 
   document.querySelectorAll('.user-btn').forEach(function (btn) {
@@ -547,6 +601,17 @@ function init() {
     }
     setChipSelections(els.categoriaSelect, selected);
   });
+  els.bodaSelect.addEventListener('click', function (e) {
+    var btn = e.target.closest('.chip');
+    if (!btn) return;
+    var selected = getChipSelections(els.bodaSelect);
+    if (selected.indexOf(btn.dataset.value) === -1) {
+      selected.push(btn.dataset.value);
+    } else {
+      selected = selected.filter(function (value) { return value !== btn.dataset.value; });
+    }
+    setChipSelections(els.bodaSelect, selected);
+  });
   els.prioridadSelect.addEventListener('click', function (e) {
     var btn = e.target.closest('.chip');
     if (btn) setChipSelection(els.prioridadSelect, btn.dataset.value);
@@ -556,15 +621,17 @@ function init() {
     e.preventDefault();
     var nombre = els.nombreInput.value.trim();
     var categorias = getChipSelections(els.categoriaSelect);
+    var boda = getChipSelections(els.bodaSelect);
     var prioridad = getChipSelection(els.prioridadSelect);
     if (!nombre) return;
     if (!categorias.length || !prioridad) {
       alert('Elige al menos una categoría y una prioridad.');
       return;
     }
-    addGuest(nombre, categorias, prioridad);
+    addGuest(nombre, categorias, boda, prioridad);
     els.addForm.reset();
     setChipSelections(els.categoriaSelect, []);
+    setChipSelections(els.bodaSelect, []);
     setChipSelection(els.prioridadSelect, '');
     els.nombreInput.focus();
   });
@@ -588,6 +655,20 @@ function init() {
     render();
   });
 
+  els.bodaFilters.addEventListener('click', function (e) {
+    var btn = e.target.closest('.chip');
+    if (!btn) return;
+    state.filters.boda = toggleFilterSelection(els.bodaFilters, btn.dataset.value);
+    render();
+  });
+  els.bodaFilters.addEventListener('dblclick', function (e) {
+    var btn = e.target.closest('.chip');
+    if (!btn || btn.dataset.value === 'Todos') return;
+    state.filters.boda = ['Todos'];
+    setChipSelections(els.bodaFilters, state.filters.boda);
+    render();
+  });
+
   els.prioridadFilters.addEventListener('click', function (e) {
     var btn = e.target.closest('.chip');
     if (!btn) return;
@@ -605,6 +686,11 @@ function init() {
   els.clearCategoriaFilter.addEventListener('click', function () {
     state.filters.categoria = ['Todos'];
     setChipSelections(els.categoriaFilters, state.filters.categoria);
+    render();
+  });
+  els.clearBodaFilter.addEventListener('click', function () {
+    state.filters.boda = ['Todos'];
+    setChipSelections(els.bodaFilters, state.filters.boda);
     render();
   });
   els.clearPrioridadFilter.addEventListener('click', function () {
@@ -631,6 +717,17 @@ function init() {
     }
     setChipSelections(els.editCategoriaSelect, selected);
   });
+  els.editBodaSelect.addEventListener('click', function (e) {
+    var btn = e.target.closest('.chip');
+    if (!btn) return;
+    var selected = getChipSelections(els.editBodaSelect);
+    if (selected.indexOf(btn.dataset.value) === -1) {
+      selected.push(btn.dataset.value);
+    } else {
+      selected = selected.filter(function (value) { return value !== btn.dataset.value; });
+    }
+    setChipSelections(els.editBodaSelect, selected);
+  });
   els.editPrioridadSelect.addEventListener('click', function (e) {
     var btn = e.target.closest('.chip');
     if (btn) setChipSelection(els.editPrioridadSelect, btn.dataset.value);
@@ -640,9 +737,10 @@ function init() {
     e.preventDefault();
     var nombre = els.editNombreInput.value.trim();
     var categorias = getChipSelections(els.editCategoriaSelect);
+    var boda = getChipSelections(els.editBodaSelect);
     var prioridad = getChipSelection(els.editPrioridadSelect);
     if (!nombre || !categorias.length || !prioridad) return;
-    updateGuest(state.editingId, nombre, categorias, prioridad);
+    updateGuest(state.editingId, nombre, categorias, boda, prioridad);
     closeEditModal();
   });
 
