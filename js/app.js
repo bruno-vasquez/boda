@@ -35,8 +35,8 @@ const PRIORITIES = [
   'Imprescindible',
 ];
 
-const CATEGORIES = ['Familia Maya', 'Familia Bruno', 'Amigos', 'Congre', 'Niños'];
-const CATEGORY_FILTERS = ['Todos', 'Familia', 'Familia Maya', 'Familia Bruno', 'Amigos', 'Congre', 'Niños'];
+const CATEGORIES = ['Familia Maya', 'Familia Bruno', 'Amigos', 'Congre', 'Niños', 'Boda Religiosa', 'Boda Civil'];
+const CATEGORY_FILTERS = ['Todos', 'Familia', 'Familia Maya', 'Familia Bruno', 'Amigos', 'Congre', 'Niños', 'Boda Religiosa', 'Boda Civil'];
 const PRIORITY_FILTERS = ['Todos', ...PRIORITIES];
 
 const CATEGORY_CLASS = {
@@ -45,6 +45,8 @@ const CATEGORY_CLASS = {
   'Amigos': 'cat-amigos',
   'Niños': 'cat-ninos',
   'Congre': 'cat-congre',
+  'Boda Religiosa': 'cat-boda-religiosa',
+  'Boda Civil': 'cat-boda-civil',
 };
 
 var state = {
@@ -81,6 +83,20 @@ function priorityClass(p) {
 
 function categoryClass(c) {
   return CATEGORY_CLASS[c] || 'cat-otro';
+}
+
+function normalizeCategories(value) {
+  var categories = Array.isArray(value) ? value : (value ? [value] : []);
+  return categories
+    .filter(function (category) { return category !== null && category !== undefined && category !== ''; })
+    .map(function (category) { return String(category).trim(); })
+    .filter(function (category, idx, arr) { return category && arr.indexOf(category) === idx; });
+}
+
+function getChipSelections(container) {
+  return Array.from(container.querySelectorAll('.chip.active')).map(function (chip) {
+    return chip.dataset.value;
+  });
 }
 
 // ---------- Chips reutilizables (selects y filtros) ----------
@@ -143,7 +159,9 @@ function renderStats() {
 
   var html = pill(total, 'Total') + pill(imprescindibles, 'Imprescindibles');
   CATEGORIES.forEach(function (cat) {
-    var count = visibleGuests.filter(function (g) { return g.categoria === cat; }).length;
+    var count = visibleGuests.filter(function (g) {
+      return normalizeCategories(g.categoria).indexOf(cat) !== -1;
+    }).length;
     html += pill(count, cat);
   });
   els.stats.innerHTML = html;
@@ -155,9 +173,10 @@ function pill(value, label) {
 }
 
 function matchesCategoriaFilter(categoria, filtro) {
+  var categorias = normalizeCategories(categoria);
   if (filtro === 'Todos') return true;
-  if (filtro === 'Familia') return categoria.indexOf('Familia') === 0;
-  return categoria === filtro;
+  if (filtro === 'Familia') return categorias.some(function (cat) { return cat.indexOf('Familia') === 0; });
+  return categorias.indexOf(filtro) !== -1;
 }
 
 function getFilteredGuests() {
@@ -190,12 +209,16 @@ function renderGuestList() {
   els.guestList.innerHTML = filtered.map(function (g) {
     var meta = 'Añadido por ' + g.addedBy + ' · ' + formatDate(g.addedAt);
     if (g.editedBy) meta += ' &nbsp;·&nbsp; Editado por ' + g.editedBy + ' · ' + formatDate(g.editedAt);
+    var categorias = normalizeCategories(g.categoria);
+    var categoriasHtml = categorias.length ? categorias.map(function (cat) {
+      return '<span class="tag ' + categoryClass(cat) + '">' + cat + '</span>';
+    }).join('') : '<span class="tag cat-otro">Sin categoría</span>';
 
     return '<li class="guest-item" data-id="' + g.id + '">' +
       '<div class="guest-main">' +
         '<span class="guest-name">' + escapeHtml(g.nombre) + '</span>' +
         '<div class="guest-tags">' +
-          '<span class="tag ' + categoryClass(g.categoria) + '">' + g.categoria + '</span>' +
+          categoriasHtml +
           '<span class="tag ' + priorityClass(g.prioridad) + '">' + g.prioridad + '</span>' +
         '</div>' +
         '<span class="guest-meta">' + meta + '</span>' +
@@ -228,10 +251,11 @@ function logAction(payload) {
   return addDoc(HISTORIAL_COL, payload);
 }
 
-function addGuest(nombre, categoria, prioridad) {
+function addGuest(nombre, categorias, prioridad) {
+  var categoriasValidas = normalizeCategories(categorias).filter(function (cat) { return CATEGORIES.indexOf(cat) !== -1; });
   return addDoc(GUESTS_COL, {
     nombre: nombre.trim(),
-    categoria: categoria,
+    categoria: categoriasValidas.length ? categoriasValidas : [CATEGORIES[0]],
     prioridad: prioridad,
     addedBy: state.user,
     addedAt: serverTimestamp(),
@@ -242,18 +266,19 @@ function addGuest(nombre, categoria, prioridad) {
   });
 }
 
-function updateGuest(id, nombre, categoria, prioridad) {
+function updateGuest(id, nombre, categorias, prioridad) {
   var guest = state.guests.find(function (g) { return g.id === id; });
   if (!guest) return;
 
+  var categoriasValidas = normalizeCategories(categorias).filter(function (cat) { return CATEGORIES.indexOf(cat) !== -1; });
   var cambios = [];
   if (guest.nombre !== nombre) cambios.push('nombre');
-  if (guest.categoria !== categoria) cambios.push('categoría');
+  if (JSON.stringify(normalizeCategories(guest.categoria)) !== JSON.stringify(categoriasValidas)) cambios.push('categoría');
   if (guest.prioridad !== prioridad) cambios.push('prioridad');
 
   return updateDoc(doc(db, 'invitados', id), {
     nombre: nombre.trim(),
-    categoria: categoria,
+    categoria: categoriasValidas.length ? categoriasValidas : [CATEGORIES[0]],
     prioridad: prioridad,
     editedBy: state.user,
     editedAt: serverTimestamp(),
@@ -352,7 +377,7 @@ function openEditModal(id) {
   if (!guest) return;
   state.editingId = id;
   els.editNombreInput.value = guest.nombre;
-  setChipSelection(els.editCategoriaSelect, guest.categoria);
+  setChipSelections(els.editCategoriaSelect, normalizeCategories(guest.categoria));
   setChipSelection(els.editPrioridadSelect, guest.prioridad);
   els.editModal.classList.remove('hidden');
 }
@@ -366,7 +391,7 @@ function closeEditModal() {
 function serializeGuest(g) {
   return {
     nombre: g.nombre,
-    categoria: g.categoria,
+    categoria: normalizeCategories(g.categoria),
     prioridad: g.prioridad,
     addedBy: g.addedBy,
     addedAt: g.addedAt && g.addedAt.toDate ? g.addedAt.toDate().toISOString() : null,
@@ -405,10 +430,13 @@ function importData(file) {
       var batch = writeBatch(db);
       data.guests.forEach(function (g) {
         if (!g || !g.nombre) return;
+        var categoriasImportadas = normalizeCategories(g.categoria).filter(function (cat) {
+          return CATEGORIES.indexOf(cat) !== -1;
+        });
         var ref = doc(GUESTS_COL);
         batch.set(ref, {
           nombre: String(g.nombre).trim(),
-          categoria: CATEGORIES.indexOf(g.categoria) !== -1 ? g.categoria : CATEGORIES[0],
+          categoria: categoriasImportadas.length ? categoriasImportadas : [CATEGORIES[0]],
           prioridad: PRIORITIES.indexOf(g.prioridad) !== -1 ? g.prioridad : PRIORITIES[1],
           addedBy: g.addedBy || state.user,
           addedAt: parseDateSafe(g.addedAt) || serverTimestamp(),
@@ -510,7 +538,14 @@ function init() {
 
   els.categoriaSelect.addEventListener('click', function (e) {
     var btn = e.target.closest('.chip');
-    if (btn) setChipSelection(els.categoriaSelect, btn.dataset.value);
+    if (!btn) return;
+    var selected = getChipSelections(els.categoriaSelect);
+    if (selected.indexOf(btn.dataset.value) === -1) {
+      selected.push(btn.dataset.value);
+    } else {
+      selected = selected.filter(function (value) { return value !== btn.dataset.value; });
+    }
+    setChipSelections(els.categoriaSelect, selected);
   });
   els.prioridadSelect.addEventListener('click', function (e) {
     var btn = e.target.closest('.chip');
@@ -520,16 +555,16 @@ function init() {
   els.addForm.addEventListener('submit', function (e) {
     e.preventDefault();
     var nombre = els.nombreInput.value.trim();
-    var categoria = getChipSelection(els.categoriaSelect);
+    var categorias = getChipSelections(els.categoriaSelect);
     var prioridad = getChipSelection(els.prioridadSelect);
     if (!nombre) return;
-    if (!categoria || !prioridad) {
-      alert('Elige una categoría y una prioridad.');
+    if (!categorias.length || !prioridad) {
+      alert('Elige al menos una categoría y una prioridad.');
       return;
     }
-    addGuest(nombre, categoria, prioridad);
+    addGuest(nombre, categorias, prioridad);
     els.addForm.reset();
-    setChipSelection(els.categoriaSelect, '');
+    setChipSelections(els.categoriaSelect, []);
     setChipSelection(els.prioridadSelect, '');
     els.nombreInput.focus();
   });
@@ -587,7 +622,14 @@ function init() {
 
   els.editCategoriaSelect.addEventListener('click', function (e) {
     var btn = e.target.closest('.chip');
-    if (btn) setChipSelection(els.editCategoriaSelect, btn.dataset.value);
+    if (!btn) return;
+    var selected = getChipSelections(els.editCategoriaSelect);
+    if (selected.indexOf(btn.dataset.value) === -1) {
+      selected.push(btn.dataset.value);
+    } else {
+      selected = selected.filter(function (value) { return value !== btn.dataset.value; });
+    }
+    setChipSelections(els.editCategoriaSelect, selected);
   });
   els.editPrioridadSelect.addEventListener('click', function (e) {
     var btn = e.target.closest('.chip');
@@ -597,10 +639,10 @@ function init() {
   els.editForm.addEventListener('submit', function (e) {
     e.preventDefault();
     var nombre = els.editNombreInput.value.trim();
-    var categoria = getChipSelection(els.editCategoriaSelect);
+    var categorias = getChipSelections(els.editCategoriaSelect);
     var prioridad = getChipSelection(els.editPrioridadSelect);
-    if (!nombre || !categoria || !prioridad) return;
-    updateGuest(state.editingId, nombre, categoria, prioridad);
+    if (!nombre || !categorias.length || !prioridad) return;
+    updateGuest(state.editingId, nombre, categorias, prioridad);
     closeEditModal();
   });
 
